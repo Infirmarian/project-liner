@@ -7,12 +7,15 @@ ending_dictionary = {
         "cs":"C#",
         "cpp":"C++",
         "html":"HTML",
-        "css":"CSS"
+        "css":"CSS",
+        "c":"C",
+        "rb":"Ruby",
+        "go":"Go"
     }
 # Returns the language of a program, and None if a language cannot be
 # determined
-def get_language(url):
-    pos = url.rfind(".")
-    ending = url[pos+1:]
+def get_language(path):
+    pos = path.rfind(".")
+    ending = path[pos+1:]
     return ending_dictionary.get(ending)
 

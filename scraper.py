@@ -73,3 +73,5 @@ def get_language_frequency(username, project):
             # Wait to reduce stress on GitHub's servers
             time.sleep(1)
     return languages
+
+#print(get_language_frequency("Infirmarian", "MovieBlog"))
