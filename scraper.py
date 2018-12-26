@@ -1,6 +1,7 @@
 # © Robert Geil 2018
 import requests
 import time
+import comutils
 from bs4 import BeautifulSoup
 
 
@@ -13,6 +14,7 @@ def get_page(url):
         print("No DOM or an empty value was given")
         return None
     return response.text
+
 
 # Returns a list of all public projects for each user
 def get_projects(username):
@@ -47,20 +49,14 @@ def get_files_urls(url):
             urls_to_check += get_files_urls(url+"/"+filename)
     return urls_to_check
 
-# Returns the language of a program, and None if a language cannot be
-# determined
-def get_language(url):
-    pos = url.rfind(".")
-    ending = url[pos+1:]
-    return "a"
-
 
 # Returns an integer for the number of lines of code in a project
 def get_line_count(url):
     soup = BeautifulSoup(get_page(url), "lxml")
-
-    return 1
-
+    info = soup.select(".file-info")
+    stripped_text = info[0].text.strip("\n\t\r ")
+    begin = stripped_text[:stripped_text.find("lines")-1]
+    return int(begin[begin.rfind(" "):].replace(",", ""))
 
 
 def get_language_frequency(username, project):
@@ -68,7 +64,7 @@ def get_language_frequency(username, project):
     urls = get_files_urls(base_url)
     languages = {}
     for url in urls:
-        lang = get_language(url)
+        lang = comutils.get_language(url)
         if lang is not None:
             if lang in languages:
                 languages[lang] += get_line_count(url)
@@ -77,10 +73,3 @@ def get_language_frequency(username, project):
             # Wait to reduce stress on GitHub's servers
             time.sleep(1)
     return languages
-
-
-
-
-urls = get_files_urls("https://github.com/Infirmarian/MovieBlog/tree/master")
-for u in urls:
-    print(u)
