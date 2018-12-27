@@ -59,24 +59,30 @@ def get_line_count(url):
     info = soup.select(".file-info")
     stripped_text = info[0].text.strip("\n\t\r ")
     begin = stripped_text[:stripped_text.find("lines")-1]
-    # TODO: Check this with rgeil-net css/style.css!
+    if not begin[0].isdigit():
+        begin = begin[begin.rfind(" ")+1:]
     return int(begin.replace(",", ""))
 
 
 def get_language_frequency(username, project):
     base_url = "https://github.com/{u}/{p}/tree/master".format(u=username, p=project)
     urls = get_files_urls(base_url)
+    proj_analysis = {
+        "ProjectTitle":username+"/"+project,
+        "Type":"GitHub",
+        "languages":{}
+    }
     if urls is None:
-        return {"ErrorStatus":1}
-    languages = {}
+        proj_analysis["ErrorStatus"]=1
+        return proj_analysis
     for url in urls:
         lang = comutils.get_language(url)
         if lang is not None:
-            if lang in languages:
-                languages[lang] += get_line_count(url)
+            if lang in proj_analysis["languages"]:
+                proj_analysis["languages"][lang] += get_line_count(url)
             else:
-                languages[lang] = get_line_count(url)
+                proj_analysis["languages"][lang] = get_line_count(url)
             # Wait to reduce stress on GitHub's servers
             time.sleep(1)
-    languages["ErrorStatus"] = 0
-    return languages
+    proj_analysis["ErrorStatus"] = 0
+    return proj_analysis

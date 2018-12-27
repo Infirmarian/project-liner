@@ -4,11 +4,10 @@ from tkinter import filedialog
 import scraper
 import localprog
 
-
 bg_color = "lightblue"
 width = 600
 height = 600
-large_font = ("Verdana", 50, "bold")
+large_font = ("Verdana", 35, "bold")
 mid_font = ("Verdana", 20, "bold")
 small_font = ("Verdana", 15, "bold")
 # This dictionary maps from languages to hex value colors, based on GitHub's color scheme for 
@@ -24,7 +23,8 @@ color_map = {
     "C":"#555555",
     "Ruby":"#701516",
     "Go":"#375eab",
-    "PHP":"#4F5D95"
+    "PHP":"#4F5D95",
+    "Swift":"#ffac45"
 }
 
 class SelectPage(tk.Frame):
@@ -81,29 +81,35 @@ class GitHubEntry(tk.Frame):
         sub.place(relx=0.75, rely=0.65, anchor="center")
         # Navigation buttons
         back = tk.Button(self, text="Back", command=self.page_back, highlightbackground=bg_color)
-        back.place(relx=0.1, rely=0.1, anchor="center")
+        back.place(relx=0.2, rely=0.8, anchor="center")
         end = tk.Button(self, text="Quit", command=lambda:exit(0), highlightbackground=bg_color)
         end.place(relx=0.8, rely=0.8, anchor="center")
 
-    def page_back(self):
+        # Error message
+        self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="")
+        self.err.place(relx = 0.5, rely = 0.7, anchor="center")
+
+    def clear_entries(self):
         self.username.delete(0, "end")
         self.project.delete(0, "end")
-        self.err.destroy()
+        self.err.config(text="")
+
+    def page_back(self):
+        self.clear_entries()
         self.controller.show_frame(SelectPage)
 
     def get_distribution(self):
         u = self.username.get()
         p = self.project.get()
         if u == "" or p == "":
-            self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="Username and project cannot be blank")
-            self.err.place(relx = 0.5, rely = 0.7, anchor="center")
+            self.err.config(text="Username and project cannot be blank")
         else:
             res = scraper.get_language_frequency(u, p)
             if res["ErrorStatus"] == 0:
-                print(res)
+                self.clear_entries()
+                self.controller.display_results(Result, res)
             else:
-                self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="That user or project doens't seem to exist, or is private. Try again!")
-                self.err.place(relx = 0.5, rely = 0.7, anchor="center")
+                self.err.config(text="That user or project doens't seem to exist, or is private. Try again!")
 
 class LocalEntry(tk.Frame):
     def __init__(self, parent, controller):
@@ -116,9 +122,14 @@ class LocalEntry(tk.Frame):
         select = tk.Button(self, text="Select Directory", command=self.get_directory, highlightbackground=bg_color)
         select.place(relx=0.5, rely=0.6, anchor="center")
 
+        # Option to use .gitignore when found
+        self.bool_gitignore = tk.IntVar()
+        self.check = tk.Checkbutton(self, bg=bg_color, text="Use .gitignore", variable=self.bool_gitignore)
+        self.check.place(relx=0.7, rely=0.6, anchor="center")
+
         # Navigation buttons
         back = tk.Button(self, text="Back", command=self.page_back, highlightbackground=bg_color)
-        back.place(relx=0.1, rely=0.1, anchor="center")
+        back.place(relx=0.2, rely=0.8, anchor="center")
         end = tk.Button(self, text="Quit", command=lambda:exit(0), highlightbackground=bg_color)
         end.place(relx=0.8, rely=0.8, anchor="center")
 
@@ -127,16 +138,62 @@ class LocalEntry(tk.Frame):
     def get_directory(self):
         dir = filedialog.askdirectory()
         if dir != "":
-            print(dir)
-            res = localprog.get_code_frequency(dir, gitignore=True)
-            print(res)
+            print(self.bool_gitignore.get())
+            res = localprog.get_code_frequency(dir, gitignore=self.bool_gitignore.get())
+            self.controller.display_results(Result, res)
+
 
 # Display the results of a project
-# TODO: this
 class Result(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self,parent)
         self.controller = controller
+        self.configure(height=height, width=width, bg=bg_color)
+
+        # Project Title
+        self.project_title = tk.Label(self, text="", font=large_font, bg=bg_color)
+        self.project_title.place(relx=0.5, rely=0.05, anchor="n")
+
+        # Total lines
+        self.lcount = tk.Label(self, text="", font=mid_font, bg=bg_color)
+        self.lcount.place(relx=0.5, rely=0.2, anchor="n")
+
+        # Canvas to display proportion bar
+        self.bar_width=width-20
+        self.bar = tk.Canvas(self, width=self.bar_width, height=80, bg=bg_color, highlightbackground=bg_color)
+        self.bar.place(relx =0.5, rely=0.5, anchor="center")
+
+        # Navigation buttons
+        self.back = tk.Button(self, text="Back", command=self.page_back, highlightbackground=bg_color)
+        self.back.place(relx=0.2, rely=0.8, anchor="center")
+        end = tk.Button(self, text="Quit", command=lambda:exit(0), highlightbackground=bg_color)
+        end.place(relx=0.8, rely=0.8, anchor="center")
+
+    def display_data(self, data):
+        # Configure the back button to jump back to the previous page
+        if data["Type"] == "local":
+            self.back.config(command=lambda: self.page_back(LocalEntry))
+        elif data["Type"] == "GitHub":
+            self.back.config(command=lambda: self.page_back(GitHubEntry))
+
+        self.project_title.config(text=data["ProjectTitle"])
+        total_lines = sum(data["languages"].values())
+        self.lcount.config(text="Total lines: {}".format(total_lines))
+        sorted_by_value = sorted(data["languages"].items(), key=lambda kv: kv[1], reverse=True)
+        print(sorted_by_value)
+        x_val = 0
+        for lan in sorted_by_value:
+            mini_width = self.bar_width*lan[1]/total_lines
+            self.bar.create_rectangle(x_val, 0, x_val+mini_width, 20, fill=color_map[lan[0]])
+            if mini_width > 40:
+                self.bar.create_text(x_val+mini_width/2, 30, text=lan[0], font=small_font)
+                self.bar.create_text(x_val+mini_width/2, 65, text="{} lines\n({}%)".format(lan[1], round(100*lan[1]/total_lines,1)), font=small_font, justify="center")
+            x_val += mini_width
+        
+    def page_back(self, page=SelectPage):
+        self.bar.delete("all")
+        self.controller.show_frame(page)
+
 
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -149,15 +206,20 @@ class Application(tk.Tk):
 
         self.frames = {}
 
-        for F in [SelectPage, GitHubEntry, LocalEntry]:
+        for F in [SelectPage, GitHubEntry, LocalEntry, Result]:
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame(SelectPage)
 
-    def show_frame(self, cont, data=None):
+    def show_frame(self, cont):
         frame = self.frames[cont]
+        frame.tkraise()
+    # Specialized display frame function to load data as well
+    def display_results(self, cont, data):
+        frame = self.frames[cont]
+        frame.display_data(data)
         frame.tkraise()
 
 if __name__ == "__main__":

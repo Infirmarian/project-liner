@@ -68,12 +68,17 @@ def get_all_files(path, use_gitignore, gitignore=None):
 
 def get_code_frequency(path, gitignore = True):
     all_files = get_all_files(path, use_gitignore=gitignore)
-    languages = {}
+    proj_analysis = {
+        "ProjectTitle":os.path.split(path)[1],
+        "Type":"local",
+        "languages":{}
+    }
     for name in all_files:
         ftype = comutils.get_language(name)
         if ftype is not None:
-            if ftype in languages:
-                languages[ftype] += get_lines_from_file(name)
+            if ftype in proj_analysis["languages"]:
+                proj_analysis["languages"][ftype] += get_lines_from_file(name)
             else:
-                languages[ftype] = get_lines_from_file(name)
-    return languages
+                proj_analysis["languages"][ftype] = get_lines_from_file(name)
+    proj_analysis["ErrorStatus"] = 0
+    return proj_analysis
