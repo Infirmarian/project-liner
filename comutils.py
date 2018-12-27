@@ -10,12 +10,13 @@ ending_dictionary = {
         "css":"CSS",
         "c":"C",
         "rb":"Ruby",
-        "go":"Go"
+        "go":"Go",
+        "php":"PHP"
     }
 # Returns the language of a program, and None if a language cannot be
 # determined
 def get_language(path):
     pos = path.rfind(".")
     ending = path[pos+1:]
-    return ending_dictionary.get(ending)
+    return ending_dictionary.get(ending.lower())
 
