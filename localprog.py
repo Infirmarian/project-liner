@@ -36,8 +36,9 @@ def parse_gitignore(path):
                 else:
                     x=(line.strip("\n").replace(".", "\.").replace("*", ".*"))
                     files.append(x)
-    exp = re.compile("|".join(files))
-    ignore["files"] = exp
+    if len(files) > 0:
+        exp = re.compile("|".join(files))
+        ignore["files"] = exp
     return ignore
             
 
@@ -58,7 +59,7 @@ def get_all_files(path, use_gitignore, gitignore=None):
             subpath = os.path.join(path, filename)
             if os.path.isdir(subpath) and not (hasg and filename in gitignore["dir"]):
                 files += get_all_files(os.path.join(path, filename), use_gitignore, gitignore=gitignore)
-            elif os.path.isfile(subpath) and not (hasg and gitignore["files"].match(filename)):
+            elif os.path.isfile(subpath) and not (hasg and "files" in gitignore and gitignore["files"].match(filename)):
                 files.append(os.path.join(path, filename))
     
     if os.path.isfile(path) and (not use_gitignore or not gitignore["files"].match(filename)):
@@ -67,12 +68,14 @@ def get_all_files(path, use_gitignore, gitignore=None):
     return files
 
 def get_code_frequency(path, gitignore = True):
-    all_files = get_all_files(path, use_gitignore=gitignore)
+    if not os.path.exists(path):
+        return {"ErrorStatus":1}
     proj_analysis = {
         "ProjectTitle":os.path.split(path)[1],
         "Type":"local",
         "languages":{}
     }
+    all_files = get_all_files(path, use_gitignore=gitignore)
     for name in all_files:
         ftype = comutils.get_language(name)
         if ftype is not None:

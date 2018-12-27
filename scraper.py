@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 def get_page(url):
     response = requests.get(url)
     if response.status_code >= 400:
-        print("Error, unable to scrape page {url}".format(url=url))
+        print("Error, unable to scrape page {url}\nError Code {ec}".format(url=url, ec=response.status_code))
         return None
     if response.text is None or response.text == "":
         print("No DOM or an empty value was given")
