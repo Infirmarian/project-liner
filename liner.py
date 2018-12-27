@@ -49,7 +49,9 @@ class SelectPage(tk.Frame):
 
         end = tk.Button(self, text="Quit", command=lambda:exit(0), highlightbackground=bg_color)
         end.place(relx=0.8, rely=0.8, anchor="center")
-
+# TODO: make webscraper run on seperate thread to prevent main program from hanging
+# TODO: make loading indicator for better user experience
+# TODO: make option to scrape through ALL user projects?
 class GitHubEntry(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self,parent)
@@ -77,7 +79,7 @@ class GitHubEntry(tk.Frame):
         pprompt=tk.Label(self, text="Project", bg=bg_color, font=small_font)
         pprompt.place(relx=0.7, rely=0.55, anchor="center")
         # Submit button
-        sub = tk.Button(self, text="Get Lines", command=self.get_distribution, highlightbackground=bg_color)
+        sub = tk.Button(self, text="Analyze", command=self.get_distribution, highlightbackground=bg_color)
         sub.place(relx=0.75, rely=0.65, anchor="center")
         # Navigation buttons
         back = tk.Button(self, text="Back", command=self.page_back, highlightbackground=bg_color)
@@ -110,7 +112,7 @@ class GitHubEntry(tk.Frame):
                 self.controller.display_results(Result, res)
             else:
                 self.err.config(text="That user or project doens't seem to exist, or is private. Try again!")
-
+# TODO: improve GUI for selecting path
 class LocalEntry(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self,parent)
@@ -118,14 +120,30 @@ class LocalEntry(tk.Frame):
         self.configure(height=height, width=width, bg=bg_color)
         label = tk.Label(self, text="Project Liner", bg=bg_color, font=large_font, justify="center")
         label.place(relx=0.5, rely=0.1, anchor="n")
+        
+        description = tk.Label(self, 
+            text="Select a local directory to analyze. Checking the .gitignore button will cause the program to not count those files in the total", 
+            bg=bg_color, font=("Verdana", 20), justify="center", wraplength=400)
+        description.place(relx=0.5, rely=0.3, anchor="n")
 
-        select = tk.Button(self, text="Select Directory", command=self.get_directory, highlightbackground=bg_color)
-        select.place(relx=0.5, rely=0.6, anchor="center")
+        # Input path
+        self.path_input = tk.Entry(self, highlightbackground=bg_color, width=35)
+        self.path_input.place(relx=0.45, rely=0.55, anchor="center")
+        canvas = tk.Canvas(self, width=25, height=25, highlightbackground=bg_color, bg="#ffdfa5")
+        canvas.bind("<Button-1>", self.open_file_dialog)
+        canvas.create_oval(5,12,10,17, fill="brown")
+        canvas.create_oval(12,12,17,17, fill="brown")
+        canvas.create_oval(19,12,24,17, fill="brown")
+        canvas.place(relx=0.77, rely=0.55, anchor="center")
 
         # Option to use .gitignore when found
         self.bool_gitignore = tk.IntVar()
         self.check = tk.Checkbutton(self, bg=bg_color, text="Use .gitignore", variable=self.bool_gitignore)
         self.check.place(relx=0.7, rely=0.6, anchor="center")
+
+        # Button to begin analysis
+        select = tk.Button(self, text="Analyze", command=self.analyze, highlightbackground=bg_color)
+        select.place(relx=0.5, rely=0.6, anchor="center")
 
         # Navigation buttons
         back = tk.Button(self, text="Back", command=self.page_back, highlightbackground=bg_color)
@@ -133,13 +151,30 @@ class LocalEntry(tk.Frame):
         end = tk.Button(self, text="Quit", command=lambda:exit(0), highlightbackground=bg_color)
         end.place(relx=0.8, rely=0.8, anchor="center")
 
+        # Error message
+        self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="")
+        self.err.place(relx = 0.5, rely = 0.7, anchor="center")
+
     def page_back(self):
         self.controller.show_frame(SelectPage)
-    def get_directory(self):
+
+    def open_file_dialog(self, event):
         dir = filedialog.askdirectory()
-        if dir != "":
-            print(self.bool_gitignore.get())
-            res = localprog.get_code_frequency(dir, gitignore=self.bool_gitignore.get())
+        self.path_input.delete(0,"end")
+        self.path_input.insert(0,dir)
+
+    def reset_page(self):
+        self.path_input.delete(0,"end")
+        self.err.config(text="")
+
+    def analyze(self):
+        dir = self.path_input.get()
+        res = localprog.get_code_frequency(dir, gitignore=self.bool_gitignore.get())
+        if res["ErrorStatus"] != 0:
+            print("Error, invalid path")
+            self.err.config(text="Please enter a valid path")
+        else:
+            self.reset_page()
             self.controller.display_results(Result, res)
 
 
@@ -160,7 +195,7 @@ class Result(tk.Frame):
 
         # Canvas to display proportion bar
         self.bar_width=width-20
-        self.bar = tk.Canvas(self, width=self.bar_width, height=80, bg=bg_color, highlightbackground=bg_color)
+        self.bar = tk.Canvas(self, width=self.bar_width, height=100, bg=bg_color, highlightbackground=bg_color)
         self.bar.place(relx =0.5, rely=0.5, anchor="center")
 
         # Navigation buttons
@@ -180,15 +215,21 @@ class Result(tk.Frame):
         total_lines = sum(data["languages"].values())
         self.lcount.config(text="Total lines: {}".format(total_lines))
         sorted_by_value = sorted(data["languages"].items(), key=lambda kv: kv[1], reverse=True)
-        print(sorted_by_value)
+        names_to_display = min(4, len(sorted_by_value))
         x_val = 0
+        count = 1
         for lan in sorted_by_value:
             mini_width = self.bar_width*lan[1]/total_lines
-            self.bar.create_rectangle(x_val, 0, x_val+mini_width, 20, fill=color_map[lan[0]])
-            if mini_width > 40:
-                self.bar.create_text(x_val+mini_width/2, 30, text=lan[0], font=small_font)
-                self.bar.create_text(x_val+mini_width/2, 65, text="{} lines\n({}%)".format(lan[1], round(100*lan[1]/total_lines,1)), font=small_font, justify="center")
+            self.bar.create_rectangle(x_val, 0, x_val+mini_width, 20, fill=color_map[lan[0]], outline="")
+
+            if count <= names_to_display:
+                self.bar.create_oval(count*self.bar_width/(names_to_display+1)-4, 25, 6+count*self.bar_width/(names_to_display+1), 35, fill=color_map[lan[0]], outline="")
+                
+                self.bar.create_text(count*(self.bar_width)/(names_to_display+1), 45, text=lan[0], font=small_font)
+                self.bar.create_text(count*(self.bar_width)/(names_to_display+1), 80, text="{} lines\n({}%)".format(lan[1], round(100*lan[1]/total_lines,1)), font=small_font, justify="center")
+            
             x_val += mini_width
+            count += 1
         
     def page_back(self, page=SelectPage):
         self.bar.delete("all")
