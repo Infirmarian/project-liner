@@ -2,6 +2,8 @@
 import tkinter as tk
 from tkinter import filedialog
 import scraper
+import localprog
+
 
 bg_color = "lightblue"
 width = 600
@@ -86,12 +88,22 @@ class GitHubEntry(tk.Frame):
     def page_back(self):
         self.username.delete(0, "end")
         self.project.delete(0, "end")
+        self.err.destroy()
         self.controller.show_frame(SelectPage)
 
     def get_distribution(self):
         u = self.username.get()
         p = self.project.get()
-        print("Getting project {} from user {}".format(p, u))
+        if u == "" or p == "":
+            self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="Username and project cannot be blank")
+            self.err.place(relx = 0.5, rely = 0.7, anchor="center")
+        else:
+            res = scraper.get_language_frequency(u, p)
+            if res["ErrorStatus"] == 0:
+                print(res)
+            else:
+                self.err = tk.Label(self, bg=bg_color, font=small_font, fg="red",text="That user or project doens't seem to exist, or is private. Try again!")
+                self.err.place(relx = 0.5, rely = 0.7, anchor="center")
 
 class LocalEntry(tk.Frame):
     def __init__(self, parent, controller):
@@ -116,7 +128,15 @@ class LocalEntry(tk.Frame):
         dir = filedialog.askdirectory()
         if dir != "":
             print(dir)
+            res = localprog.get_code_frequency(dir, gitignore=True)
+            print(res)
 
+# Display the results of a project
+# TODO: this
+class Result(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self,parent)
+        self.controller = controller
 
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -136,7 +156,7 @@ class Application(tk.Tk):
 
         self.show_frame(SelectPage)
 
-    def show_frame(self, cont):
+    def show_frame(self, cont, data=None):
         frame = self.frames[cont]
         frame.tkraise()
 

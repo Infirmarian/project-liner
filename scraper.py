@@ -34,6 +34,9 @@ def get_files_urls(url):
     # Slow down requests to not overburden GitHub's servers
     time.sleep(1)
     page = get_page(url)
+    # The user or project didn't exist!
+    if page is None:
+        return None
     soup = BeautifulSoup(page, "lxml")
     lines = soup.select("tr.js-navigation-item")
     urls_to_check = []
@@ -56,12 +59,15 @@ def get_line_count(url):
     info = soup.select(".file-info")
     stripped_text = info[0].text.strip("\n\t\r ")
     begin = stripped_text[:stripped_text.find("lines")-1]
-    return int(begin[begin.rfind(" "):].replace(",", ""))
+    # TODO: Check this with rgeil-net css/style.css!
+    return int(begin.replace(",", ""))
 
 
 def get_language_frequency(username, project):
     base_url = "https://github.com/{u}/{p}/tree/master".format(u=username, p=project)
     urls = get_files_urls(base_url)
+    if urls is None:
+        return {"ErrorStatus":1}
     languages = {}
     for url in urls:
         lang = comutils.get_language(url)
@@ -72,6 +78,5 @@ def get_language_frequency(username, project):
                 languages[lang] = get_line_count(url)
             # Wait to reduce stress on GitHub's servers
             time.sleep(1)
+    languages["ErrorStatus"] = 0
     return languages
-
-#print(get_language_frequency("Infirmarian", "MovieBlog"))

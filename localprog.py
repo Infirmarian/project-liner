@@ -42,7 +42,7 @@ def parse_gitignore(path):
             
 
 
-def get_all_files(path, use_gitignore = True, gitignore=None):
+def get_all_files(path, use_gitignore, gitignore=None):
     # In the case that a non-existant path is passed, return an empty list
     if not os.path.exists(path):
         return []
@@ -52,12 +52,13 @@ def get_all_files(path, use_gitignore = True, gitignore=None):
         # Find a gitignore if it exists in the directory
         if ".gitignore" in subdirs and use_gitignore:
            gitignore = parse_gitignore(os.path.join(path, ".gitignore"))
-
+        # This boolean is checked before comparing against the gitignore file
+        hasg = gitignore is not None
         for filename in subdirs:
             subpath = os.path.join(path, filename)
-            if os.path.isdir(subpath) and (not use_gitignore or filename not in gitignore["dir"]):
-                files += get_all_files(os.path.join(path, filename), use_gitignore=use_gitignore, gitignore=gitignore)
-            elif os.path.isfile(subpath) and (not use_gitignore or not gitignore["files"].match(filename)):
+            if os.path.isdir(subpath) and not (hasg and filename in gitignore["dir"]):
+                files += get_all_files(os.path.join(path, filename), use_gitignore, gitignore=gitignore)
+            elif os.path.isfile(subpath) and not (hasg and gitignore["files"].match(filename)):
                 files.append(os.path.join(path, filename))
     
     if os.path.isfile(path) and (not use_gitignore or not gitignore["files"].match(filename)):
@@ -65,13 +66,12 @@ def get_all_files(path, use_gitignore = True, gitignore=None):
 
     return files
 
-def get_code_frequency(path):
-    all_files = get_all_files(path)
+def get_code_frequency(path, gitignore = True):
+    all_files = get_all_files(path, use_gitignore=gitignore)
     languages = {}
     for name in all_files:
         ftype = comutils.get_language(name)
         if ftype is not None:
-            print(name)
             if ftype in languages:
                 languages[ftype] += get_lines_from_file(name)
             else:
