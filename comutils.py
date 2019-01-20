@@ -12,7 +12,9 @@ ending_dictionary = {
         "rb":"Ruby",
         "go":"Go",
         "php":"PHP",
-        "swift":"Swift"
+        "swift":"Swift",
+        "sh":"Shell",
+        "ml":"OCaml"
     }
 # Returns the language of a program, and None if a language cannot be
 # determined

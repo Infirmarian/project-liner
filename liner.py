@@ -24,7 +24,9 @@ color_map = {
     "Ruby":"#701516",
     "Go":"#375eab",
     "PHP":"#4F5D95",
-    "Swift":"#ffac45"
+    "Swift":"#ffac45",
+    "Shell":"#89e051",
+    "OCaml":"#3be133"
 }
 
 class SelectPage(tk.Frame):
