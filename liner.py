@@ -24,7 +24,11 @@ color_map = {
     "Ruby":"#701516",
     "Go":"#375eab",
     "PHP":"#4F5D95",
-    "Swift":"#ffac45"
+    "Swift":"#ffac45",
+    "Shell":"#89e051",
+    "OCaml":"#3be133",
+    "Scheme":"#1e4aec",
+    "Prolog":"#74283c"
 }
 
 class SelectPage(tk.Frame):
@@ -172,7 +176,7 @@ class LocalEntry(tk.Frame):
         res = localprog.get_code_frequency(dir, gitignore=self.bool_gitignore.get())
         if res["ErrorStatus"] != 0:
             print("Error, invalid path")
-            self.err.config(text="Please enter a valid path")
+            self.err.config(text=res["error"])
         else:
             self.reset_page()
             self.controller.display_results(Result, res)
