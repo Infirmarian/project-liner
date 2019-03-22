@@ -1,7 +1,7 @@
 # © Robert Geil 2018
 import os
 import comutils
-import re
+import subprocess
 
 def get_lines_from_file(path):
     # no lines if the path doesn't exist or is not a file
@@ -13,69 +13,58 @@ def get_lines_from_file(path):
             lcount += 1
     return lcount
 
+def get_git_tracked_files(path):
+    try:
+        process = subprocess.check_output(["./sample.sh {}".format(path)], shell=True)
+        x = process.decode().split("\n")[1:]
+        x.remove("")
+        for i in range(0, len(x)):
+            x[i] = os.path.join(path, x[i])
+        return (x)
+    except Exception as e:
+        print("Error, likely that git repository doesn't exist")
+        print(e)
+        return []
+
 
 # Returns if a file is hidden (eg begins with a .)
 def is_hidden(path):
     return os.path.split(path)[1][0] == "." 
 
-def parse_gitignore(path):
-    ignore = {
-        "dir":[]
-    }
-    files = []
-    with open(path, "r") as f:
-        for line in f:
-            if line == "\n":
-                continue
-            # Find if the line terminates
-            count = line.find("#")
-            line = line.strip("\n")
-            if count > 0 or count == -1:
-                if line[0] == "/" or line[-1]=="/":
-                    ignore["dir"].append(line.strip("/"))
-                else:
-                    x=(line.strip("\n").replace(".", "\.").replace("*", ".*"))
-                    files.append(x)
-    if len(files) > 0:
-        exp = re.compile("|".join(files))
-        ignore["files"] = exp
-    return ignore
-            
 
-
-def get_all_files(path, use_gitignore, gitignore=None):
+def get_all_files(path, use_gitignore=False):
     # In the case that a non-existant path is passed, return an empty list
     if not os.path.exists(path):
         return []
+    if use_gitignore:
+        return get_git_tracked_files(path)
     files = []
     if os.path.isdir(path) and not is_hidden(path):
         subdirs = os.listdir(path)
-        # Find a gitignore if it exists in the directory
-        if ".gitignore" in subdirs and use_gitignore:
-           gitignore = parse_gitignore(os.path.join(path, ".gitignore"))
         # This boolean is checked before comparing against the gitignore file
-        hasg = gitignore is not None
         for filename in subdirs:
             subpath = os.path.join(path, filename)
-            if os.path.isdir(subpath) and not (hasg and filename in gitignore["dir"]):
-                files += get_all_files(os.path.join(path, filename), use_gitignore, gitignore=gitignore)
-            elif os.path.isfile(subpath) and not (hasg and "files" in gitignore and gitignore["files"].match(filename)):
+            if os.path.isdir(subpath):
+                files += get_all_files(os.path.join(path, filename))
+            elif os.path.isfile(subpath):
                 files.append(os.path.join(path, filename))
     
-    if os.path.isfile(path) and (not use_gitignore or not gitignore["files"].match(filename)):
+    if os.path.isfile(path):
         return [path]
 
     return files
 
 def get_code_frequency(path, gitignore = True):
     if not os.path.exists(path):
-        return {"ErrorStatus":1}
+        return {"ErrorStatus":1, "error":"Please enter a valid path"}
     proj_analysis = {
         "ProjectTitle":os.path.split(path)[1],
         "Type":"local",
         "languages":{}
     }
-    all_files = get_all_files(path, use_gitignore=gitignore)
+    all_files = get_all_files(path, gitignore)
+    if len(all_files) == 0 and gitignore:
+        return {"ErrorStatus":1, "error":"There doesn't seem to be a git repository in this folder"}
     for name in all_files:
         ftype = comutils.get_language(name)
         if ftype is not None:

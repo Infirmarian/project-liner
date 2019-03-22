@@ -14,7 +14,9 @@ ending_dictionary = {
         "php":"PHP",
         "swift":"Swift",
         "sh":"Shell",
-        "ml":"OCaml"
+        "ml":"OCaml",
+        "ss":"Scheme",
+        "pl":"Prolog"
     }
 # Returns the language of a program, and None if a language cannot be
 # determined
